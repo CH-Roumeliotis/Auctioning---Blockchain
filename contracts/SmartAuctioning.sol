@@ -1,5 +1,74 @@
 pragma solidity >=0.4.22 <0.9.0;
 
 contract smartAuctioning {
-    
+
+    enum Status{Pending, Ended, PaidOut, NotDelivered}
+    event newAuction(address indexed _seller, uint indexed _auctionID);
+	event bidMade(address indexed _seller, address indexed _bidder, uint indexed _auctionID, uint _numBids, uint _value);
+	event bidFailed(address indexed _seller, address indexed _bidder, uint indexed _auctionID, bytes32 _reason);
+	event auctionEnded(address indexed _seller, address indexed _buyer, uint indexed _auctionID, uint _value);
+	event fundsReleased(address indexed _seller, address indexed _buyer, uint indexed _auctionID, uint _value);
+
+    //@notice time in second, insures that auction will end up in a reasonable amount of time
+	uint constant maximumDuration = 1000000;
+
+    struct Auction{
+        bytes32 itemName;
+		bytes32 releaseHash;
+		address seller;
+		uint deliveryDeadline;
+		uint auctionEndTime;
+		uint category;
+		Status status;
+		uint numBids;
+		uint highestBid;
+		mapping (uint => Bid) bids;
+		mapping (address => uint) bidders;
+    }
+
+    struct Bid{
+        address maker;
+        uint amount;
+    }
+
+    struct Seller{
+        uint numAuctions;
+		mapping(uint => uint) auctions;
+    }
+
+    uint public numAuctions = 0;
+	mapping (uint => Auction) public auctions;
+	mapping (address => Seller) public sellers;
+    bool allowAuctions = true;
+	address owner;
+
+    modifier hasValue {
+        if(msg.value > 0) 
+        _; 
+    }
+
+	//@notice Set the owner in order to close the auction. 
+	function DBayContract() public {
+		owner = msg.sender;
+	}
+
+    //@title add new auction
+    //@param _auctionEndTime end time of an auction in order to check the duration
+    function createAuction(bytes32 _itemName, uint _auctionEndTime, uint _category) public returns (uint auctionID){
+		if (allowAuctions && _auctionEndTime > block.timestamp) {
+            auctionID = numAuctions++; 
+			Auction storage a = auctions[auctionID];
+			a.itemName = _itemName;
+			a.seller = msg.sender;
+			a.auctionEndTime = _auctionEndTime;
+			a.category = _category;
+			a.status = Status.Pending;
+			a.highestBid = 0;
+			a.numBids = 0;
+			Seller storage s = sellers[msg.sender];
+			uint seller_auctionID = s.numAuctions++;
+			s.auctions[seller_auctionID] = auctionID;
+			emit newAuction(msg.sender, auctionID);
+		}
+	}
 }
