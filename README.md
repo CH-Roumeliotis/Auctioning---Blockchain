@@ -1,5 +1,4 @@
-## Auctioning
-Optimal Bidding Strategy for Maker Auctions
+## Optimal bidding Strategy for Maker Auctions
 
 Auctions have been used in numerous ways, in both
 online and offline contexts. A little-studied area has
