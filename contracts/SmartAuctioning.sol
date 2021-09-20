@@ -20,7 +20,7 @@ contract SmartAuctioning {
     struct Auction{
         bytes32 itemName;
 		bytes32 releaseHash;
-		address seller;
+		address payable seller;
 		uint deliveryDeadline;
 		uint auctionEndTime;
 		uint category;
@@ -141,7 +141,22 @@ contract SmartAuctioning {
 				a.status = Status.PaidOut;
 			}
 		} else {
-			emit bidFailed(0, msg.sender, _auctionID, 'Auction not found');
+			emit bidFailed(address(0x0), msg.sender, _auctionID, 'Auction not found');
+		}
+	}
+
+	function notDelivered(uint _auctionID) public {
+		Auction storage a = auctions[_auctionID];
+		if (a.seller != address(0x0)) {
+			// contract exists
+			Bid storage highestBid = a.bids[a.highestBid];
+			// allow the highest bidder to reclaim bid if seller has not yet delivered, and the delivery deadline has passed
+			if (a.status == Status.Ended && block.timestamp >= a.auctionEndTime + a.deliveryDeadline && msg.sender == highestBid.maker) {
+				highestBid.maker.transfer(highestBid.amount);
+				a.status = Status.NotDelivered;
+			}
+		} else {
+			emit bidFailed(address(0x0), msg.sender, _auctionID, 'Auction not found');
 		}
 	}
 }
