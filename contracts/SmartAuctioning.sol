@@ -117,8 +117,7 @@ contract SmartAuctioning {
 		msg.sender.transfer(msg.value);
 	}
 
-	function endAuction(uint _auctionID) public 
-	{
+	function endAuction(uint _auctionID) public {
 		Auction storage a = auctions[_auctionID];
 		if (a.seller != address(0x0)) {
 			// allow the auction to be ended if the time limit has passed
@@ -129,6 +128,20 @@ contract SmartAuctioning {
 			}
 		} else {
 			emit bidFailed(address(0x0), msg.sender, _auctionID, 'Auction not found');
+		}
+	}
+
+	function releaseFunds(uint _auctionID, bytes memory _releaseSecret) public payable {
+		Auction storage a = auctions[_auctionID];
+		if (a.seller != address(0x0)) {
+			// allow the funds to be released to the seller if they can prove that they have received a matching secret from the buyer in exchange for handing the item over
+			if (a.status == Status.Ended && keccak256(_releaseSecret) == a.releaseHash) {
+				Bid storage highestBid = a.bids[a.highestBid];
+				a.seller.transfer(highestBid.amount);
+				a.status = Status.PaidOut;
+			}
+		} else {
+			emit bidFailed(0, msg.sender, _auctionID, 'Auction not found');
 		}
 	}
 }
