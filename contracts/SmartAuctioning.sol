@@ -117,10 +117,10 @@ contract SmartAuctioning {
 		msg.sender.transfer(msg.value);
 	}
 
+	//@dev allow the auction to be ended if the time limit has passed
 	function endAuction(uint _auctionID) public {
 		Auction storage a = auctions[_auctionID];
 		if (a.seller != address(0x0)) {
-			// allow the auction to be ended if the time limit has passed
 			if (a.status == Status.Pending && block.timestamp >= a.auctionEndTime) {
 				Bid storage highestBid = a.bids[a.highestBid];
 				emit auctionEnded(a.seller, msg.sender, _auctionID, highestBid.amount);
@@ -131,10 +131,10 @@ contract SmartAuctioning {
 		}
 	}
 
+	//@dev allow the funds to be released to the seller if they can prove that they have received a matching secret from the buyer in exchange for handing the item over
 	function releaseFunds(uint _auctionID, bytes memory _releaseSecret) public payable {
 		Auction storage a = auctions[_auctionID];
 		if (a.seller != address(0x0)) {
-			// allow the funds to be released to the seller if they can prove that they have received a matching secret from the buyer in exchange for handing the item over
 			if (a.status == Status.Ended && keccak256(_releaseSecret) == a.releaseHash) {
 				Bid storage highestBid = a.bids[a.highestBid];
 				a.seller.transfer(highestBid.amount);
@@ -145,12 +145,11 @@ contract SmartAuctioning {
 		}
 	}
 
+	//@dev allow the highest bidder to reclaim bid if seller has not yet delivered, and the delivery deadline has passed
 	function notDelivered(uint _auctionID) public {
 		Auction storage a = auctions[_auctionID];
 		if (a.seller != address(0x0)) {
-			// contract exists
 			Bid storage highestBid = a.bids[a.highestBid];
-			// allow the highest bidder to reclaim bid if seller has not yet delivered, and the delivery deadline has passed
 			if (a.status == Status.Ended && block.timestamp >= a.auctionEndTime + a.deliveryDeadline && msg.sender == highestBid.maker) {
 				highestBid.maker.transfer(highestBid.amount);
 				a.status = Status.NotDelivered;
