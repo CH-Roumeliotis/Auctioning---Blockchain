@@ -174,4 +174,36 @@ contract SmartAuctioning {
 		highestBidAmount = b.amount;
 		highestBidder = b.maker;
 	}
+
+	function sellerAuctions(address _seller, uint _sellerAuctionID) public view returns (uint id)
+	{
+		Seller storage s = sellers[_seller];
+		id = s.auctions[_sellerAuctionID];
+	}
+
+	function shutdown() public {
+		// this function allows the owner to close the contract to new auctions, while allowing the existing ones to be ended gracefully
+		if (msg.sender == owner) {
+			allowAuctions = false;
+		}
+	}
+	
+	function remove() public {
+		if (msg.sender == owner) {
+			selfdestruct(owner);
+		}
+	}
+
+	function clean(uint _auctionID) private {
+		Auction storage a = auctions[_auctionID];
+		a.itemName = 0;
+		a.releaseHash = 0;
+		a.seller = address(0x0);
+		a.deliveryDeadline = 0;
+		a.auctionEndTime = 0;
+		a.category = 0;
+		a.status = Status.Pending;
+		a.numBids = 0;
+		a.highestBid = 0;
+	}
 }
