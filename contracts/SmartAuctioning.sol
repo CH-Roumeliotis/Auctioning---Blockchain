@@ -40,7 +40,7 @@ contract SmartAuctioning {
 	mapping (uint => Auction) public auctions;
 	mapping (address => Seller) public sellers;
     bool allowAuctions = true;
-	address owner;
+	address payable owner;
 
     modifier hasValue {
         if(msg.value > 0) 
@@ -160,14 +160,14 @@ contract SmartAuctioning {
 		}
 	}
 
+	//@dev report the current status of the auction
+	//@dev need to cast to uint for now since bug with enum ABI impl in web3 js library
 	function reportAuction(uint _auctionID) view public returns (bytes32 itemName, uint auctionEndTime, 
 		uint timeRemaining, uint8 status, uint numBids, uint highestBidAmount, address highestBidder) {
-		// report the current status of the auction
 		Auction storage a = auctions[_auctionID];
 		itemName = a.itemName;
 		auctionEndTime = a.auctionEndTime;
 		timeRemaining = auctionEndTime - block.timestamp;
-		// need to cast to uint for now since bug with enum ABI impl in web3 js library
 		status = uint8(a.status);
 		numBids = a.numBids;
 		Bid storage b = a.bids[a.highestBid];
