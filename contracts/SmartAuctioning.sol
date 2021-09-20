@@ -1,6 +1,6 @@
 pragma solidity >=0.4.22 <0.9.0;
 
-contract smartAuctioning {
+contract SmartAuctioning {
 
     enum Status{Pending, Ended, PaidOut, NotDelivered}
     event newAuction(address indexed _seller, uint indexed _auctionID);
@@ -11,6 +11,11 @@ contract smartAuctioning {
 
     //@notice time in second, insures that auction will end up in a reasonable amount of time
 	uint constant maximumDuration = 1000000;
+
+	struct Bid{
+        address payable maker;
+        uint amount;
+    }
 
     struct Auction{
         bytes32 itemName;
@@ -24,11 +29,6 @@ contract smartAuctioning {
 		uint highestBid;
 		mapping (uint => Bid) bids;
 		mapping (address => uint) bidders;
-    }
-
-    struct Bid{
-        address maker;
-        uint amount;
     }
 
     struct Seller{
@@ -69,6 +69,66 @@ contract smartAuctioning {
 			uint seller_auctionID = s.numAuctions++;
 			s.auctions[seller_auctionID] = auctionID;
 			emit newAuction(msg.sender, auctionID);
+		}
+	}
+
+	function placeBid(uint _auctionID, bytes memory _releaseSecret) public payable hasValue {
+		Auction storage a = auctions[_auctionID];
+
+		if (a.seller != address(0x0)) {
+			if (a.status == Status.Pending) {
+				if (a.auctionEndTime >= block.timestamp) {
+					if (a.seller != msg.sender) {
+						Bid storage currentHighest = a.bids[a.highestBid];
+						if (msg.value > currentHighest.amount) {
+							uint bidID = a.numBids++;
+							Bid storage b = a.bids[bidID];
+							b.maker = msg.sender;
+							b.amount = msg.value;
+							a.highestBid = bidID;
+							currentHighest.maker.transfer(currentHighest.amount);
+							a.releaseHash = keccak256(_releaseSecret);
+							a.bidders[b.maker] = bidID;
+							emit bidMade(a.seller, msg.sender, _auctionID, a.numBids, b.amount);
+							return;
+
+						} else {
+							emit bidFailed(a.seller, msg.sender, _auctionID, 'bid is less than the highest');
+
+						}
+					} else {
+						emit bidFailed(a.seller, msg.sender, _auctionID, 'seller can\'t bid');
+
+					}
+				} else {
+					emit bidFailed(a.seller, msg.sender, _auctionID, 'auction has just ended');
+					endAuction(_auctionID);
+
+				}
+			} else {
+				emit bidFailed(a.seller, msg.sender, _auctionID, 'auction has been closed');
+
+			}
+		} else {
+			emit bidFailed(address(0x0), msg.sender, _auctionID, 'auction could not be found');
+
+		}
+
+		msg.sender.transfer(msg.value);
+	}
+
+	function endAuction(uint _auctionID) public 
+	{
+		Auction storage a = auctions[_auctionID];
+		if (a.seller != address(0x0)) {
+			// allow the auction to be ended if the time limit has passed
+			if (a.status == Status.Pending && block.timestamp >= a.auctionEndTime) {
+				Bid storage highestBid = a.bids[a.highestBid];
+				emit auctionEnded(a.seller, msg.sender, _auctionID, highestBid.amount);
+				a.status = Status.Ended;
+			}
+		} else {
+			emit bidFailed(address(0x0), msg.sender, _auctionID, 'Auction not found');
 		}
 	}
 }
