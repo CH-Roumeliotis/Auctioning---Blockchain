@@ -180,8 +180,8 @@ contract SmartAuctioning {
 		id = s.auctions[_sellerAuctionID];
 	}
 
+	//@dev this function allows the owner to close the contract to new auctions, while allowing the existing ones to be ended gracefully
 	function shutdown() public {
-		// this function allows the owner to close the contract to new auctions, while allowing the existing ones to be ended gracefully
 		if (msg.sender == owner) {
 			allowAuctions = false;
 		}
